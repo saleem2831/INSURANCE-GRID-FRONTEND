@@ -28,7 +28,7 @@ function fieldControl(def:FieldDefinition|MissingField,value:string,onChange:(v:
   return <input type={type==='number'?'number':type==='date'?'date':'text'} step={type==='number'?'any':undefined} value={value} placeholder={(def as any).placeholder||''} onChange={e=>onChange(e.target.value)}/>;
 }
 
-function ResultCard({r}:{r:ComparisonResult}){
+export function ResultCard({r}:{r:ComparisonResult}){
   const matched=r.status==='MATCHED'; const needs=r.status==='NEEDS_INPUT';
   return <article className={`payoutCard ${matched?'matched':needs?'needs':''}`}>
     <div className="payoutTop"><div><h3>{r.companyName||r.companyCode}</h3><span>{r.companyCode}</span></div>{matched?<div className="payoutPct">{r.percentage}%</div>:<Badge value={r.displayStatus||STATUS_LABELS[r.status||'']||r.status}/>}</div>
