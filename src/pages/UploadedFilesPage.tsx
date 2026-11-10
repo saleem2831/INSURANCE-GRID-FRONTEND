@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, RefreshCw, Search, Trash2 } from "lucide-react";
-import { API_BASE, ApiError, api } from "../api";
+import { ApiError, api, downloadFile } from "../api";
 import type { UploadedFile } from "../types";
 import { Badge } from "../components/Badge";
 
@@ -52,7 +52,7 @@ export default function UploadedFilesPage({ notify }: { notify: (s:string)=>void
         <td><Badge value={x.fileAvailable?"Yes":"Missing"}/></td>
         <td><small>{x.createdAt?new Date(x.createdAt).toLocaleString():"-"}</small></td>
         <td><div className="rowActions">
-          {x.fileAvailable && <a className="button secondary" href={`${API_BASE}/api/grid-import/${x._id}/download`}><Download size={15}/> Download</a>}
+          {x.fileAvailable && <button className="button secondary" onClick={()=>downloadFile(`/api/grid-import/${x._id}/download`,x.fileName).catch(e=>notify(e.message))}><Download size={15}/> Download</button>}
           <button className="dangerButton" onClick={()=>remove(x)}><Trash2 size={15}/> Delete</button>
         </div></td>
       </tr>})}</tbody>

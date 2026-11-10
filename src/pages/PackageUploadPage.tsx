@@ -13,6 +13,8 @@ type Props={onOpenPackages:()=>void;notify:(s:string)=>void};
 
 export default function PackageUploadPage({onOpenPackages,notify}:Props){
   const [companies,setCompanies]=useState<Insurer[]>([]);
+  const [tenants,setTenants]=useState<Array<{_id:string;code:string;name:string}>>([]);
+  const [ownerTenantId,setOwnerTenantId]=useState('');
   const [selected,setSelected]=useState('CUSTOM');
   const [files,setFiles]=useState<File[]>([]);
   const [preview,setPreview]=useState<GridPackagePreview|null>(null);
@@ -21,7 +23,7 @@ export default function PackageUploadPage({onOpenPackages,notify}:Props){
   const [meta,setMeta]=useState({companyCode:'',companyName:'',version:'SEP-2026',effectiveFrom:'2026-09-01',effectiveTo:'2026-09-30'});
 
   async function loadCompanies(){try{const r:any=await api('/api/insurance-companies');setCompanies(r.data||[])}catch(e:any){notify(e.message)}}
-  useEffect(()=>{loadCompanies()},[]);
+  useEffect(()=>{loadCompanies();api<any>('/api/v1/tenants').then(r=>setTenants(r.data||[])).catch(()=>{});},[]);
   function chooseCompany(code:string){setSelected(code);const c=companies.find(x=>x.code===code);if(c)setMeta(m=>({...m,companyCode:c.code,companyName:c.name}));else setMeta(m=>({...m,companyCode:'',companyName:''}));setPreview(null)}
   function chooseFiles(list:FileList|null){const rows=Array.from(list||[]);setFiles(rows);setPreview(null)}
 
@@ -36,6 +38,7 @@ export default function PackageUploadPage({onOpenPackages,notify}:Props){
       fd.append('relativePaths',JSON.stringify(relativePaths));
       fd.append('sourceType',relativePaths.some(p=>p.includes('/'))?'COMPANY_FOLDER':files.length===1?'SINGLE_FILE':'MULTI_FILE');
       Object.entries(meta).forEach(([k,v])=>v&&fd.append(k,v));
+      if (ownerTenantId) fd.append('ownerTenantId', ownerTenantId);
       const r:any=await api('/api/grid-packages/preview',{method:'POST',body:fd});
       setPreview(r.data);
       await loadCompanies();
@@ -59,6 +62,7 @@ export default function PackageUploadPage({onOpenPackages,notify}:Props){
         <label>Effective from<input type="date" value={meta.effectiveFrom} onChange={e=>setMeta({...meta,effectiveFrom:e.target.value})}/></label>
         <label>Effective to<input type="date" value={meta.effectiveTo} onChange={e=>setMeta({...meta,effectiveTo:e.target.value})}/></label>
       </div>
+      {!!tenants.length&&<div className="tenantPackageOwner"><label>Grid package visibility<select value={ownerTenantId} onChange={e=>setOwnerTenantId(e.target.value)}><option value="">Shared package (admin must explicitly grant access to tenants)</option>{tenants.map(t=><option key={t._id} value={t._id}>Private to {t.name} ({t.code})</option>)}</select></label><p className="motorHelper">Shared does not mean public. Every tenant still needs an explicit grant. A tenant-owned package cannot be granted to another tenant.</p></div>}
       <div className="packagePickers">
         <label className="dropzone compactDrop"><FolderOpen size={30}/><input type="file" multiple {...({webkitdirectory:'',directory:''} as any)} onChange={e=>chooseFiles(e.target.files)}/><strong>Select Company Folder</strong><span>Recommended for Tata/HDFC/Royal and other multi-file insurers</span></label>
         <label className="dropzone compactDrop"><UploadCloud size={30}/><input type="file" multiple accept=".xlsx,.xls,.xlsb,.pdf" onChange={e=>chooseFiles(e.target.files)}/><strong>Select Multiple Files</strong><span>XLSX, XLS, XLSB and PDF · up to 50 documents</span></label>
