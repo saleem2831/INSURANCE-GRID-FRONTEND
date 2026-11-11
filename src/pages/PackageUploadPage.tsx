@@ -20,7 +20,7 @@ export default function PackageUploadPage({onOpenPackages,notify}:Props){
   const [preview,setPreview]=useState<GridPackagePreview|null>(null);
   const [busy,setBusy]=useState(false);
   const [activate,setActivate]=useState(true);
-  const [meta,setMeta]=useState({companyCode:'',companyName:'',version:'SEP-2026',effectiveFrom:'2026-09-01',effectiveTo:'2026-09-30'});
+  const [meta,setMeta]=useState({companyCode:'',companyName:'',version:'',effectiveFrom:''});
 
   async function loadCompanies(){try{const r:any=await api('/api/insurance-companies');setCompanies(r.data||[])}catch(e:any){notify(e.message)}}
   useEffect(()=>{loadCompanies();api<any>('/api/v1/tenants').then(r=>setTenants(r.data||[])).catch(()=>{});},[]);
@@ -30,6 +30,7 @@ export default function PackageUploadPage({onOpenPackages,notify}:Props){
   async function previewPackage(){
     if(!files.length)return notify('Select a company folder or multiple grid files first.');
     if(!meta.companyCode||!meta.companyName)return notify('Company code and company name are required.');
+    if(!meta.version.trim()||!meta.effectiveFrom)return notify('Enter Grid Version and Effective From date.');
     setBusy(true);
     try{
       const fd=new FormData();
@@ -53,14 +54,14 @@ export default function PackageUploadPage({onOpenPackages,notify}:Props){
   return <div className="stack">
     <section className="card">
       <div className="sectionTitle"><Layers3 size={26}/><div><h2>Company Grid Package</h2><p>Upload one file or an entire company folder. Related payout, RTO, cluster and product files are validated as one effective package.</p></div></div>
-      <div className="accuracyNote"><CheckCircle2 size={19}/><div><b>V7 package rule</b><span>One insurer + one effective period = one active package, whether the insurer supplied 1 file or 20 files.</span></div></div>
+      <div className="accuracyNote"><CheckCircle2 size={19}/><div><b>Approval-based grid versioning</b><span>Effective From only. The newest approved applicable version is used; earlier versions stay available for historical quotes.</span></div></div>
       <div className="formGrid">
         <label>Insurance company<select value={selected} onChange={e=>chooseCompany(e.target.value)}><option value="CUSTOM">+ New / custom insurer</option>{companies.map(c=><option key={c.code} value={c.code}>{c.name} ({c.code})</option>)}</select></label>
         <label>Company code<input value={meta.companyCode} disabled={selected!=='CUSTOM'} onChange={e=>setMeta({...meta,companyCode:e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g,'_')})}/></label>
         <label>Company name<input value={meta.companyName} disabled={selected!=='CUSTOM'} onChange={e=>setMeta({...meta,companyName:e.target.value})}/></label>
         <label>Version<input value={meta.version} onChange={e=>setMeta({...meta,version:e.target.value.toUpperCase()})}/></label>
         <label>Effective from<input type="date" value={meta.effectiveFrom} onChange={e=>setMeta({...meta,effectiveFrom:e.target.value})}/></label>
-        <label>Effective to<input type="date" value={meta.effectiveTo} onChange={e=>setMeta({...meta,effectiveTo:e.target.value})}/></label>
+        <div className="motorHelper" style={{alignSelf:'center'}}>Open-ended validity: an approved later grid automatically takes precedence from its Effective From date. Historical versions are retained.</div>
       </div>
       {!!tenants.length&&<div className="tenantPackageOwner"><label>Grid package visibility<select value={ownerTenantId} onChange={e=>setOwnerTenantId(e.target.value)}><option value="">Shared package (admin must explicitly grant access to tenants)</option>{tenants.map(t=><option key={t._id} value={t._id}>Private to {t.name} ({t.code})</option>)}</select></label><p className="motorHelper">Shared does not mean public. Every tenant still needs an explicit grant. A tenant-owned package cannot be granted to another tenant.</p></div>}
       <div className="packagePickers">

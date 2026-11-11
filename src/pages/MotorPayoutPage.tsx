@@ -13,7 +13,7 @@ type FormConfig={ motor:MotorOption;capacityDimension:string;capacityRequired:bo
 type Issue={field:string;code:string;message:string};
 type MotorForm={ policy_type_id:number;motor_type_id:number;fuel_type_id:number;capacity_id:string;capacity_value:string;policy_date:string;rto:string;vehicle_make:string;vehicle_age:string;ncb:string;model:string;gwp:string;odPremium:string;tpPremium:string;monthlyGwp:string; };
 const day=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
-const initialForm:MotorForm={policy_type_id:1,motor_type_id:17,fuel_type_id:2,capacity_id:'',capacity_value:'',policy_date:day(),rto:'',vehicle_make:'',vehicle_age:'',ncb:'0',model:'',gwp:'',odPremium:'',tpPremium:'',monthlyGwp:''};
+const initialForm:MotorForm={policy_type_id:1,motor_type_id:17,fuel_type_id:2,capacity_id:'',capacity_value:'',policy_date:'',rto:'',vehicle_make:'',vehicle_age:'',ncb:'0',model:'',gwp:'',odPremium:'',tpPremium:'',monthlyGwp:''};
 const amount=(v:string)=>v.trim()===''?undefined:Number(v);
 function readNumber(id:string){return Number(id);}
 const statusLabel=(s:string)=>({MATCHED:'Matched',NO_ACTIVE_GRID:'No active grid',NO_GRID:'No active grid',NO_MATCH:'Not matched',NO_RULES:'Not applicable',NEEDS_INPUT:'More details required',DECLINE:'Declined',NO_BUSINESS:'Not offered',MANUAL_REVIEW:'Manual review',NO_RTO_MAPPING:'RTO mapping missing'} as Record<string,string>)[s]||s;
@@ -22,7 +22,7 @@ function Entry({label,help,required,children,issue}:{label:string;help?:string;r
 }
 export default function MotorPayoutPage({notify}:{notify:(s:string)=>void}){
   const [catalog,setCatalog]=useState<Catalog|null>(null);
-  const [form,setForm]=useState<MotorForm>(initialForm);
+  const [form,setForm]=useState<MotorForm>({...initialForm,policy_date:''});
   const [config,setConfig]=useState<FormConfig|null>(null);
   const [errors,setErrors]=useState<Issue[]>([]);
   const [warnings,setWarnings]=useState<Issue[]>([]);
@@ -32,6 +32,7 @@ export default function MotorPayoutPage({notify}:{notify:(s:string)=>void}){
   const [filter,setFilter]=useState('');
   const [matchedOnly,setMatchedOnly]=useState(false);
   const [showAdvanced,setShowAdvanced]=useState(false);
+  const [useCustomQuoteDate,setUseCustomQuoteDate]=useState(false);
   const [loadError,setLoadError]=useState('');
   const [sort,setSort]=useState('payout');
   const update=(field:keyof MotorForm,value:string|number)=>{setForm(f=>({...f,[field]:value}));setErrors(x=>x.filter(z=>z.field!==field));};
@@ -67,7 +68,7 @@ export default function MotorPayoutPage({notify}:{notify:(s:string)=>void}){
   const build=()=>{
     const payload:Record<string,unknown>={
       policy_type_id:form.policy_type_id,motor_type_id:form.motor_type_id,fuel_type_id:form.fuel_type_id,
-      policy_date:form.policy_date,rto:form.rto.trim(),vehicle_make:form.vehicle_make.trim(),
+      ...(useCustomQuoteDate&&form.policy_date?{policy_date:form.policy_date}:{}),rto:form.rto.trim(),vehicle_make:form.vehicle_make.trim(),
       ...(form.capacity_id?{capacity_id:readNumber(form.capacity_id)}:{}),
       ...(amount(form.capacity_value)!==undefined?{capacity_value:amount(form.capacity_value)}:{}),
       ...(amount(form.vehicle_age)!==undefined?{vehicle_age:amount(form.vehicle_age)}:{}),
@@ -111,11 +112,12 @@ export default function MotorPayoutPage({notify}:{notify:(s:string)=>void}){
       <div className="sectionTitle"><Calculator size={26}/><div><h2>Find Motor Payout</h2><p>Choose your policy and vehicle. The form asks only for fields applicable to your motor type.</p></div></div>
       <div className="accuracyNote"><ShieldCheck size={19}/><div><b>Source-backed results</b><span>All available insurers are checked. Percentages appear only where the underlying grid provides a matching rule.</span></div></div>
       {loadError&&<div className="alert danger"><AlertCircle size={16}/>{loadError}. Verify the backend is running.</div>}
+      <div className="quoteDateOptions"><span>Quote date: Today (automatic, platform business time zone)</span><label><input type="checkbox" checked={useCustomQuoteDate} onChange={e=>{setUseCustomQuoteDate(e.target.checked);update('policy_date',e.target.checked?day():'');}}/> Historical / future quote</label>{useCustomQuoteDate&&<Entry label="Requested policy date" required issue={err('policy_date')}><input type="date" value={form.policy_date} onChange={e=>update('policy_date',e.target.value)}/></Entry>}</div>
       <div className="motorFormGroup"><h3>Policy & vehicle</h3><div className="compactInputs">
         <Entry label="Policy Type" required issue={err('policy_type_id')}><select value={form.policy_type_id} onChange={e=>update('policy_type_id',Number(e.target.value))}>{catalog?.policyTypes.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></Entry>
         <Entry label="Motor Type" required issue={err('motor_type_id')}><select value={form.motor_type_id} onChange={e=>{setForm(f=>({...f,motor_type_id:Number(e.target.value),capacity_id:'',capacity_value:'',vehicle_age:''}));setResults(null);setExtra({});setErrors([])}}>{catalog?.motorTypes.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></Entry>
         <Entry label="Fuel Type" required issue={err('fuel_type_id')}><select value={form.fuel_type_id} onChange={e=>{setForm(f=>({...f,fuel_type_id:Number(e.target.value),capacity_id:'',capacity_value:''}));setResults(null);setExtra({})}}>{catalog?.fuelTypes.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></Entry>
-        <Entry label="Policy Date" required issue={err('policy_date')}><input type="date" value={form.policy_date} onChange={e=>update('policy_date',e.target.value)}/></Entry>
+
         <Entry label="RTO" required issue={err('rto')} help="Example: MH-01, AP-21"><input placeholder="MH-01" value={form.rto} onChange={e=>update('rto',e.target.value.toUpperCase())}/></Entry>
         <Entry label="Vehicle Make" required issue={err('vehicle_make')}><input placeholder="TATA, HONDA, HYUNDAI…" value={form.vehicle_make} onChange={e=>update('vehicle_make',e.target.value.toUpperCase())}/></Entry>
         {(config?.vehicleAgeRequired||form.vehicle_age!=='')&&<Entry label="Vehicle Age (years)" required={config?.vehicleAgeRequired} issue={err('vehicle_age')}><input type="number" min="0" max="100" step="1" value={form.vehicle_age} onChange={e=>update('vehicle_age',e.target.value)}/></Entry>}
@@ -139,7 +141,8 @@ export default function MotorPayoutPage({notify}:{notify:(s:string)=>void}){
       {def.options?.length?<select value={extra[field]||''} onChange={e=>setExtra(x=>({...x,[field]:e.target.value}))}><option value="">Select</option>{def.options.map((o:any,i:number)=>{const v=typeof o==='object'&&o!==null&&'value'in o?o.value:o;const label=typeof o==='object'&&o!==null&&'label'in o?o.label:String(v);return <option key={i} value={String(v)}>{label}</option>})}</select>:def.type==='boolean'?<select value={extra[field]||''} onChange={e=>setExtra(x=>({...x,[field]:e.target.value}))}><option value="">Select</option><option value="true">Yes</option><option value="false">No</option></select>:<input type={def.type==='number'?'number':'text'} value={extra[field]||''} onChange={e=>setExtra(x=>({...x,[field]:e.target.value}))}/>}</>
     </Entry>)}</div><button className="primary" disabled={loading} onClick={compare}>Recalculate all insurers</button></section>}
     {results&&<>
-      {results.results?.length && results.results.every(r=>['NO_ACTIVE_GRID','NO_GRID'].includes(r.status||'')) && <div className="motorIssues motorWarning"><b>No active grids for this policy date</b><p>Check whether the insurer package effective dates include {form.policy_date}. Historical September grids should not automatically be applied to October policies.</p></div>}
+      <p className="motorHelper">Quote effective date: <strong>{results.quoteDate||"—"}</strong>{results.quoteDateDefaulted?" (today, selected automatically)":" (requested date)"}</p>
+      {results.results?.length && results.results.every(r=>['NO_ACTIVE_GRID','NO_GRID'].includes(r.status||'')) && <div className="motorIssues motorWarning"><b>No active grids for this policy date</b><p>No approved or authorized grid is available for {results.quoteDate||"this quote date"}. Check tenant grants, the insurer package Effective From date and any old explicit end dates.</p></div>}
       <div className="summaryStrip"><div><span>Insurers Checked</span><b>{results.insurersChecked||results.results?.length||0}</b></div><div><span>Matched</span><b>{results.matchedInsurers||0}</b></div><div><span>Need More Input</span><b>{results.needsInput||0}</b></div><div><span>Best Payout</span><b>{typeof results.bestPayout?.commissionAmount==='number'?`₹${results.bestPayout.commissionAmount.toLocaleString('en-IN')}`:typeof results.bestPayout?.percentage==='number'?`${results.bestPayout.percentage}%`:'—'}</b><small>{results.bestPayout?.companyName||''}</small></div></div>
       <section className="card"><div className="toolbar"><div><h2>Insurer Payout Results</h2><p>Showing {rows.length} of {results.results?.length||0}. Companies without a match are included.</p></div><Filter size={19}/></div>
         <div className="motorResultFilters"><div className="searchBox"><Search size={17}/><input placeholder="Search company or status" value={filter} onChange={e=>setFilter(e.target.value)}/></div><select aria-label="Sort insurer results" value={sort} onChange={e=>setSort(e.target.value)}><option value="payout">Payout: high to low</option><option value="asc">Payout: low to high</option><option value="insurer">Company name</option></select><label className="filterCheck"><input type="checkbox" checked={matchedOnly} onChange={e=>setMatchedOnly(e.target.checked)}/> Matched only</label></div>

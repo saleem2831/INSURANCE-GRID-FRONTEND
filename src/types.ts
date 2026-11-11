@@ -7,7 +7,7 @@ export type UploadedFile = { _id:string; fileName:string; fileHash?:string; vers
 export type MissingField = { field:string; label?:string; type?:string; options?:any[]; requiredByRules?:string[] };
 export type ComparisonResult = {
   companyCode?:string; companyName?:string; status?:string; displayStatus?:string; percentage?:number|null; basis?:string|null; basisAmount?:number|null; commissionAmount?:number|null;
-  ruleCode?:string; matchedCluster?:string|null; reason?:string; message?:string; gridVersion?:string; logicalKey?:string;
+  ruleCode?:string; gridEffectiveFrom?:string; gridScope?:"SHARED"|"TENANT_OWNED"; gridReview?:{daysSinceEffective:number;reviewDue:boolean;thresholdDays:number}; matchedCluster?:string|null; reason?:string; message?:string; gridVersion?:string; logicalKey?:string;
   missingFields?:MissingField[]; basePercentage?:number|null; baseRuleCode?:string;
   source?:{fileName?:string;sheet?:string;row?:number;column?:string;originalText?:string};
   percentageAudit?:{sourceText?:string|null;sheet?:string|null;row?:number|null;column?:string|null;fileName?:string|null};
@@ -17,7 +17,7 @@ export type ComparisonResult = {
   derivations?:Array<{ruleCode?:string;field?:string;value?:unknown;source?:any}>; derivedContext?:Record<string,unknown>;
   resolvedInputs?:Record<string,unknown>; rtoContext?:Record<string,unknown>; activeGridFiles?:string[];
 };
-export type ComparisonData = { insurersChecked?:number; matchedInsurers?:number; needsInput?:number; filteredCount?:number; bestOffer?:ComparisonResult|null; bestPayout?:ComparisonResult|null; results?:ComparisonResult[]; inputValidation?:any };
+export type ComparisonData = { quoteDate?:string; quoteDateDefaulted?:boolean; businessTimeZone?:string; insurersChecked?:number; matchedInsurers?:number; needsInput?:number; filteredCount?:number; bestOffer?:ComparisonResult|null; bestPayout?:ComparisonResult|null; results?:ComparisonResult[]; inputValidation?:any };
 
 export type GridDocumentRole =
   | 'PAYOUT_GRID' | 'PRODUCT_GRID' | 'RTO_MASTER' | 'CLUSTER_MASTER'
@@ -31,7 +31,7 @@ export type GridPackageDocument = {
 
 export type GridPackagePreview = {
   packageId?: string; duplicate?: boolean; action?: string; message?: string; name?: string; version?: string;
-  status?: string; effectiveFrom?: string; effectiveTo?: string; sourceType?: string; totalDocuments?: number;
+  status?: string; effectiveFrom?: string; effectiveTo?: string; currentGrid?:boolean; currentProducts?:string[]; review?:{daysSinceEffective:number;reviewDue:boolean;thresholdDays:number}; sourceType?: string; totalDocuments?: number;
   totalRules?: number; totalRtoMappings?: number; productCoverage?: string[]; warnings?: string[]; errors?: string[];
   validationSummary?: any; canCommit?: boolean; documents?: GridPackageDocument[];
 };
